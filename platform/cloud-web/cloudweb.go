@@ -22,8 +22,8 @@ type Platform struct {
 	project string
 	token   string
 
-	transportKind string
-	allowFrom     string
+	transportKind  string
+	allowFrom      string
 	shareInChannel bool
 	groupReplyAll  bool
 
@@ -312,17 +312,24 @@ func (p *Platform) handleMessage(raw []byte) {
 
 	rc := replyContext{SessionKey: sessionKey, ReplyCtx: replyCtx}
 	msg := &core.Message{
-		SessionKey: sessionKey,
-		Platform:   p.name,
-		MessageID:  msgID,
-		ChannelID:  m.ChatID,
-		UserID:     m.UserID,
-		UserName:   firstNonEmpty(m.UserName, m.UserID),
-		Content:    m.Content,
-		Images:     decodeImages(m.Images),
-		Files:      decodeFiles(m.Files),
-		Audio:      decodeAudio(m.Audio),
-		ReplyCtx:   rc,
+		SessionKey:       sessionKey,
+		Platform:         p.name,
+		MessageID:        msgID,
+		ChannelID:        m.ChatID,
+		UserID:           m.UserID,
+		UserName:         firstNonEmpty(m.UserName, m.UserID),
+		Content:          m.Content,
+		Images:           decodeImages(m.Images),
+		Files:            decodeFiles(m.Files),
+		Audio:            decodeAudio(m.Audio),
+		ReplyCtx:         rc,
+		AgentTurnOptions: &core.AgentTurnOptions{},
+	}
+	if m.Model != nil {
+		msg.AgentTurnOptions.Model = *m.Model
+	}
+	if m.ReasoningEffort != nil {
+		msg.AgentTurnOptions.ReasoningEffort = *m.ReasoningEffort
 	}
 
 	p.mu.RLock()

@@ -30,6 +30,28 @@ func TestAppServerSession_ApplyThreadRuntimeState(t *testing.T) {
 	}
 }
 
+func TestAppServerSession_SetTurnOptionsIsolatedAndResetsToDefaults(t *testing.T) {
+	s := &appServerSession{model: "gpt-5.6-sol", effort: "medium", defaultModel: "gpt-5.6-sol", defaultEffort: "medium"}
+	if err := s.SetTurnOptions(core.AgentTurnOptions{Model: "gpt-5.6-luna", ReasoningEffort: "high"}); err != nil {
+		t.Fatalf("SetTurnOptions: %v", err)
+	}
+	if got := s.GetModel(); got != "gpt-5.6-luna" {
+		t.Fatalf("model = %q, want gpt-5.6-luna", got)
+	}
+	if got := s.GetReasoningEffort(); got != "high" {
+		t.Fatalf("reasoning effort = %q, want high", got)
+	}
+	if err := s.SetTurnOptions(core.AgentTurnOptions{}); err != nil {
+		t.Fatalf("reset SetTurnOptions: %v", err)
+	}
+	if got := s.GetModel(); got != "gpt-5.6-sol" {
+		t.Fatalf("reset model = %q, want gpt-5.6-sol", got)
+	}
+	if got := s.GetReasoningEffort(); got != "medium" {
+		t.Fatalf("reset reasoning effort = %q, want medium", got)
+	}
+}
+
 func TestAppServerSession_HandleRateLimitsUpdatedCachesUsage(t *testing.T) {
 	s := &appServerSession{}
 	raw, err := json.Marshal(appServerRateLimitsResponse{
@@ -505,17 +527,17 @@ func waitForWrittenJSONLine(t *testing.T, w *lockedWriteCloser) string {
 
 func TestAppServerListenURL(t *testing.T) {
 	cases := map[string]string{
-		"":                       "",
-		"  ":                     "",
-		"stdio://":               "",
-		"stdio":                  "",
-		"ws://127.0.0.1:3845":    "ws://127.0.0.1:3845",
-		"ws://localhost:9000":    "ws://localhost:9000",
-		"ws://127.0.0.1:3845 ":   "ws://127.0.0.1:3845",
-		" stdio ":                 "",
-		" stdio:// ":               "",
-		"STDIO":                    "",
-		"STDIO://":                 "",
+		"":                     "",
+		"  ":                   "",
+		"stdio://":             "",
+		"stdio":                "",
+		"ws://127.0.0.1:3845":  "ws://127.0.0.1:3845",
+		"ws://localhost:9000":  "ws://localhost:9000",
+		"ws://127.0.0.1:3845 ": "ws://127.0.0.1:3845",
+		" stdio ":              "",
+		" stdio:// ":           "",
+		"STDIO":                "",
+		"STDIO://":             "",
 	}
 	for in, want := range cases {
 		if got := appServerListenURL(in); got != want {

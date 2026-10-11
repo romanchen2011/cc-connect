@@ -73,6 +73,8 @@ func TestBuildExecArgs_IncludesReasoningEffort(t *testing.T) {
 		"--model",
 		"o3",
 		"-c",
+		"model_context_window=270000",
+		"-c",
 		`model_reasoning_effort="high"`,
 		"--json",
 		"--cd",
@@ -86,6 +88,32 @@ func TestBuildExecArgs_IncludesReasoningEffort(t *testing.T) {
 		if args[i] != want[i] {
 			t.Fatalf("args[%d] = %q, want %q, args=%v", i, args[i], want[i], args)
 		}
+	}
+}
+
+func TestCodexSession_SetTurnOptionsIsIsolatedAndResetsToDefaults(t *testing.T) {
+	cs, err := newCodexSession(context.Background(), "codex", nil, "/tmp/project", "gpt-5.6-sol", "medium", "full-auto", "", "", nil, "", "", "")
+	if err != nil {
+		t.Fatalf("newCodexSession: %v", err)
+	}
+
+	if err := cs.SetTurnOptions(core.AgentTurnOptions{Model: "gpt-5.6-luna", ReasoningEffort: "xhigh"}); err != nil {
+		t.Fatalf("SetTurnOptions: %v", err)
+	}
+	args := strings.Join(cs.buildExecArgs("hello", nil), " ")
+	if !strings.Contains(args, "--model gpt-5.6-luna") || !strings.Contains(args, `model_reasoning_effort="xhigh"`) {
+		t.Fatalf("turn args missing overrides: %s", args)
+	}
+
+	if err := cs.SetTurnOptions(core.AgentTurnOptions{}); err != nil {
+		t.Fatalf("reset SetTurnOptions: %v", err)
+	}
+	args = strings.Join(cs.buildExecArgs("hello", nil), " ")
+	if !strings.Contains(args, "--model gpt-5.6-sol") || !strings.Contains(args, `model_reasoning_effort="medium"`) {
+		t.Fatalf("turn args did not reset to defaults: %s", args)
+	}
+	if err := cs.SetTurnOptions(core.AgentTurnOptions{ReasoningEffort: "unsupported"}); err == nil {
+		t.Fatal("expected unsupported reasoning_effort to fail")
 	}
 }
 

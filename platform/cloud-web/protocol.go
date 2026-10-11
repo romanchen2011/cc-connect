@@ -115,19 +115,21 @@ type wireAudio struct {
 }
 
 type wireInboundMessage struct {
-	Type       string      `json:"type"`
-	MsgID      string      `json:"msg_id"`
-	SessionKey string      `json:"session_key"`
-	ChatID     string      `json:"chat_id,omitempty"`
-	UserID     string      `json:"user_id"`
-	UserName   string      `json:"user_name,omitempty"`
-	Content    string      `json:"content"`
-	ReplyCtx   string      `json:"reply_ctx"`
-	ChatType   string      `json:"chat_type,omitempty"`
-	Mentioned  *bool       `json:"mentioned,omitempty"`
-	Images     []wireImage `json:"images,omitempty"`
-	Files      []wireFile  `json:"files,omitempty"`
-	Audio      *wireAudio  `json:"audio,omitempty"`
+	Type            string      `json:"type"`
+	MsgID           string      `json:"msg_id"`
+	SessionKey      string      `json:"session_key"`
+	ChatID          string      `json:"chat_id,omitempty"`
+	UserID          string      `json:"user_id"`
+	UserName        string      `json:"user_name,omitempty"`
+	Content         string      `json:"content"`
+	ReplyCtx        string      `json:"reply_ctx"`
+	ChatType        string      `json:"chat_type,omitempty"`
+	Mentioned       *bool       `json:"mentioned,omitempty"`
+	Images          []wireImage `json:"images,omitempty"`
+	Files           []wireFile  `json:"files,omitempty"`
+	Audio           *wireAudio  `json:"audio,omitempty"`
+	Model           *string     `json:"model,omitempty"`
+	ReasoningEffort *string     `json:"reasoning_effort,omitempty"`
 }
 
 type wireCardAction struct {

@@ -376,6 +376,14 @@ type AgentSession interface {
 	Close() error
 }
 
+// AgentTurnOptionsConfigurer is an optional capability for sessions that can
+// apply model parameters to an individual turn without changing project-wide
+// agent defaults. Passing zero values restores the session's configured
+// defaults.
+type AgentTurnOptionsConfigurer interface {
+	SetTurnOptions(options AgentTurnOptions) error
+}
+
 // PermissionResult represents the user's decision on a permission request.
 type PermissionResult struct {
 	Behavior     string         `json:"behavior"`               // "allow" or "deny"

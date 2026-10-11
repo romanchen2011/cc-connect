@@ -425,9 +425,10 @@ type Message struct {
 	// older workspace-binding scope. When both keys are set, multi-workspace
 	// routing atomically migrates the legacy binding to ChannelKey.
 	LegacyChannelKey string
-	ReplyCtx         any    // platform-specific context needed for replying
-	FromVoice        bool   // true if message originated from voice transcription
-	ModeOverride     string // if set, temporarily override agent permission mode for this message
+	ReplyCtx         any               // platform-specific context needed for replying
+	FromVoice        bool              // true if message originated from voice transcription
+	ModeOverride     string            // if set, temporarily override agent permission mode for this message
+	AgentTurnOptions *AgentTurnOptions // if set, apply isolated per-turn agent settings
 	// IsPermissionResponse is set by inline-button / card-action paths in
 	// platforms when a synthesized message is forwarded as a permission
 	// decision (e.g. Telegram handleCallbackQuery for perm:allow/deny,
@@ -443,6 +444,13 @@ type Message struct {
 	// drop late redeliveries that reuse a new message_id but an older create_time
 	// than a message already processed. Zero means unset (no ordering hint).
 	UserMessageTimeMs int64
+}
+
+// AgentTurnOptions contains optional model parameters for one agent turn.
+// Empty values restore the agent session's configured defaults.
+type AgentTurnOptions struct {
+	Model           string
+	ReasoningEffort string
 }
 
 // EventType distinguishes different kinds of agent output.

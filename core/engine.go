@@ -548,6 +548,7 @@ type queuedMessage struct {
 	msgSessionKey     string // session key for extracting chat ID
 	channelKey        string // platform-provided channel identifier (preferred over sessionKey extraction)
 	userMessageTimeMs int64  // Feishu create_time ms (optional); see Message.UserMessageTimeMs
+	agentTurnOptions  *AgentTurnOptions
 }
 
 // interactiveState tracks a running interactive agent session and its permission state.
@@ -3296,6 +3297,28 @@ func runMessageAccepted(msg *Message) {
 	callback()
 }
 
+func cloneAgentTurnOptions(options *AgentTurnOptions) *AgentTurnOptions {
+	if options == nil {
+		return nil
+	}
+	copy := *options
+	return &copy
+}
+
+func applyAgentTurnOptions(session AgentSession, options *AgentTurnOptions) error {
+	if options == nil {
+		return nil
+	}
+	configurer, ok := session.(AgentTurnOptionsConfigurer)
+	if !ok {
+		if strings.TrimSpace(options.Model) == "" && strings.TrimSpace(options.ReasoningEffort) == "" {
+			return nil
+		}
+		return fmt.Errorf("agent session does not support per-turn model options")
+	}
+	return configurer.SetTurnOptions(*options)
+}
+
 func (e *Engine) maybeAutoResetSessionOnIdle(p Platform, msg *Message, sessions *SessionManager, interactiveKey string, session *Session, lockGen uint64) (*Session, uint64) {
 	if e.resetOnIdle <= 0 || session == nil {
 		return nil, 0
@@ -3431,6 +3454,7 @@ func (e *Engine) queueMessageForBusySession(p Platform, msg *Message, interactiv
 		msgSessionKey:     msg.SessionKey,
 		channelKey:        msg.ChannelKey,
 		userMessageTimeMs: msg.UserMessageTimeMs,
+		agentTurnOptions:  cloneAgentTurnOptions(msg.AgentTurnOptions),
 	})
 	runMessageAccepted(msg)
 	queueDepth := len(state.pendingMessages)
@@ -3989,6 +4013,11 @@ func (e *Engine) processInteractiveMessageWith(p Platform, msg *Message, session
 		return
 	}
 	e.cancelAgentSessionIdleClose(state)
+	if err := applyAgentTurnOptions(state.agentSession, msg.AgentTurnOptions); err != nil {
+		e.reply(p, msg.ReplyCtx, fmt.Sprintf("Unable to apply per-turn model options: %v", err))
+		e.scheduleAgentSessionIdleClose(interactiveKey, state)
+		return
+	}
 
 	if workspaceDir != "" && e.workspacePool != nil {
 		ws := e.workspacePool.GetOrCreate(workspaceDir)
@@ -6437,6 +6466,10 @@ func (e *Engine) processInteractiveEvents(state *interactiveState, session *Sess
 						nextSend <- fmt.Errorf("agent session became nil")
 						return
 					}
+					if err := applyAgentTurnOptions(as, queued.agentTurnOptions); err != nil {
+						nextSend <- err
+						return
+					}
 					nextSend <- as.Send(queuedPrompt, queued.messageID, queued.images, queued.files)
 				}()
 				pendingSend = nextSend
@@ -6773,6 +6806,10 @@ func (e *Engine) drainPendingMessages(state *interactiveState, session *Session,
 		go func() {
 			if as == nil {
 				sendDone <- fmt.Errorf("agent session became nil")
+				return
+			}
+			if err := applyAgentTurnOptions(as, queued.agentTurnOptions); err != nil {
+				sendDone <- err
 				return
 			}
 			sendDone <- as.Send(prompt, queued.messageID, queued.images, queued.files)
