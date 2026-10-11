@@ -147,6 +147,8 @@ type appServerSession struct {
 	workDir        string
 	model          string
 	effort         string
+	defaultModel   string
+	defaultEffort  string
 	mode           string
 	baseURL        string
 	modelProvider  string
@@ -202,6 +204,8 @@ func newAppServerSession(ctx context.Context, cliBin string, cliExtraArgs []stri
 		workDir:          workDir,
 		model:            model,
 		effort:           effort,
+		defaultModel:     model,
+		defaultEffort:    effort,
 		mode:             mode,
 		baseURL:          baseURL,
 		modelProvider:    modelProvider,
@@ -267,6 +271,7 @@ func (s *appServerSession) connect() error {
 	if model := strings.TrimSpace(s.model); model != "" {
 		args = append(args, "-c", fmt.Sprintf("model=%q", model))
 	}
+	args = append(args, "-c", fmt.Sprintf("model_context_window=%d", codexModelContextWindow))
 	if effort := strings.TrimSpace(s.effort); effort != "" {
 		args = append(args, "-c", fmt.Sprintf("model_reasoning_effort=%q", effort))
 	}

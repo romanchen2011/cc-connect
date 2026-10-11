@@ -113,6 +113,8 @@ POST /cloud-web/v1/register
   "reply_ctx": "opaque-context-for-replies",
   "chat_type": "group",
   "mentioned": true,
+  "model": "gpt-5.6-sol",
+  "reasoning_effort": "high",
   "images": [],
   "files": [],
   "audio": null
@@ -122,6 +124,7 @@ POST /cloud-web/v1/register
 - `session_key`: `{platform}:{chat_id}:{user_id}` (or `{platform}:{chat_id}` when `share_session_in_channel = true`)
 - `reply_ctx`: opaque string/json echoed on every outbound message
 - `chat_type`: `direct` | `group` | `channel` — with `group_reply_all = false`, non-`mentioned` group messages are ignored
+- `model` and `reasoning_effort`: optional per-message Codex overrides. Send the desired values on each dispatch; omitted values use the Codex session's configured defaults. These overrides are isolated to the current turn and do not mutate project settings. Supported reasoning effort values are `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, and `ultra`.
 
 ### `card_action`
 

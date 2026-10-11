@@ -22,6 +22,8 @@ func init() {
 	core.RegisterAgent("codex", New)
 }
 
+const codexModelContextWindow = 270000
+
 // Agent drives OpenAI Codex CLI using `codex exec --json`.
 //
 // `codex exec` has no approval IPC, so approvals are not interactive on the
@@ -173,6 +175,27 @@ func normalizeReasoningEffort(raw string) string {
 	}
 }
 
+func normalizeTurnOptions(options core.AgentTurnOptions, defaultModel, defaultEffort string) (string, string, error) {
+	model := strings.TrimSpace(options.Model)
+	if model == "" {
+		model = defaultModel
+	}
+	if len(model) > 256 || strings.ContainsAny(model, "\x00\r\n") {
+		return "", "", fmt.Errorf("invalid model identifier")
+	}
+	effort := strings.TrimSpace(options.ReasoningEffort)
+	if effort == "" {
+		effort = defaultEffort
+	} else {
+		normalized := normalizeReasoningEffort(effort)
+		if normalized == "" {
+			return "", "", fmt.Errorf("unsupported reasoning_effort %q", effort)
+		}
+		effort = normalized
+	}
+	return model, effort, nil
+}
+
 func (a *Agent) Name() string { return "codex" }
 
 func (a *Agent) SetWorkDir(dir string) {
@@ -216,6 +239,30 @@ func (a *Agent) GetReasoningEffort() string {
 
 func (a *Agent) AvailableReasoningEfforts() []string {
 	return []string{"none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"}
+}
+
+func (cs *codexSession) SetTurnOptions(options core.AgentTurnOptions) error {
+	model, effort, err := normalizeTurnOptions(options, cs.defaultModel, cs.defaultEffort)
+	if err != nil {
+		return err
+	}
+	cs.optionsMu.Lock()
+	cs.model = model
+	cs.effort = effort
+	cs.optionsMu.Unlock()
+	return nil
+}
+
+func (s *appServerSession) SetTurnOptions(options core.AgentTurnOptions) error {
+	s.runtimeMu.Lock()
+	defer s.runtimeMu.Unlock()
+	model, effort, err := normalizeTurnOptions(options, s.defaultModel, s.defaultEffort)
+	if err != nil {
+		return err
+	}
+	s.model = model
+	s.effort = effort
+	return nil
 }
 
 func (a *Agent) configuredModels() []core.ModelOption {

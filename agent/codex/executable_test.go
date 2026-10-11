@@ -152,6 +152,16 @@ func TestDesktopCLIProcess(t *testing.T) {
 	if len(args) < 2 {
 		os.Exit(20)
 	}
+	configuredContextWindow := false
+	for i := 0; i+1 < len(args); i++ {
+		if args[i] == "-c" && args[i+1] == "model_context_window=270000" {
+			configuredContextWindow = true
+			break
+		}
+	}
+	if args[1] == "exec" && !configuredContextWindow {
+		os.Exit(24)
+	}
 	if args[1] == "exec" {
 		fmt.Println(`{"type":"thread.started","thread_id":"fixture-thread"}`)
 		fmt.Println(`{"type":"item.completed","item":{"type":"agent_message","text":"desktop CLI reply"}}`)
@@ -178,6 +188,9 @@ func TestDesktopCLIProcess(t *testing.T) {
 		case "config/read":
 			result = map[string]any{"config": map[string]any{"model": "fixture-model", "model_reasoning_effort": "high"}}
 		case "thread/start", "thread/resume":
+			if !configuredContextWindow {
+				os.Exit(24)
+			}
 			result = map[string]any{"thread": map[string]any{"id": "fixture-thread"}, "model": "fixture-model"}
 		case "skills/list":
 			cwd, _ := os.Getwd()

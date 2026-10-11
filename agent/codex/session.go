@@ -27,6 +27,9 @@ type codexSession struct {
 	workDir        string
 	model          string
 	effort         string
+	defaultModel   string
+	defaultEffort  string
+	optionsMu      sync.RWMutex
 	mode           string
 	baseURL        string   // provider base URL; passed as -c openai_base_url=<url>
 	modelProvider  string   // Codex model_provider name; passed as -c model_provider=<name>
@@ -95,6 +98,8 @@ func newCodexSession(ctx context.Context, cliBin string, cliExtraArgs []string, 
 		workDir:        workDir,
 		model:          model,
 		effort:         effort,
+		defaultModel:   model,
+		defaultEffort:  effort,
 		mode:           mode,
 		baseURL:        baseURL,
 		modelProvider:  modelProvider,
@@ -267,8 +272,11 @@ func (cs *codexSession) buildExecArgs(prompt string, imagePaths []string) []stri
 		}
 	}
 
-	if cs.model != "" {
-		args = append(args, "--model", cs.model)
+	cs.optionsMu.RLock()
+	model, effort := cs.model, cs.effort
+	cs.optionsMu.RUnlock()
+	if model != "" {
+		args = append(args, "--model", model)
 	}
 	if cs.modelProvider != "" {
 		args = append(args, "-c", fmt.Sprintf("model_provider=%q", cs.modelProvider))
@@ -276,8 +284,9 @@ func (cs *codexSession) buildExecArgs(prompt string, imagePaths []string) []stri
 	if cs.baseURL != "" {
 		args = append(args, "-c", fmt.Sprintf("openai_base_url=%q", cs.baseURL))
 	}
-	if cs.effort != "" {
-		args = append(args, "-c", fmt.Sprintf("model_reasoning_effort=%q", cs.effort))
+	args = append(args, "-c", fmt.Sprintf("model_context_window=%d", codexModelContextWindow))
+	if effort != "" {
+		args = append(args, "-c", fmt.Sprintf("model_reasoning_effort=%q", effort))
 	}
 
 	if isResume {
@@ -829,16 +838,22 @@ func (cs *codexSession) GetWorkDir() string {
 }
 
 func (cs *codexSession) GetModel() string {
-	if model := strings.TrimSpace(cs.model); model != "" {
-		return model
+	cs.optionsMu.RLock()
+	configured := strings.TrimSpace(cs.model)
+	cs.optionsMu.RUnlock()
+	if configured != "" {
+		return configured
 	}
 	model, _ := cs.runtimeConfig()
 	return model
 }
 
 func (cs *codexSession) GetReasoningEffort() string {
-	if effort := strings.TrimSpace(cs.effort); effort != "" {
-		return effort
+	cs.optionsMu.RLock()
+	configured := strings.TrimSpace(cs.effort)
+	cs.optionsMu.RUnlock()
+	if configured != "" {
+		return configured
 	}
 	_, effort := cs.runtimeConfig()
 	return effort

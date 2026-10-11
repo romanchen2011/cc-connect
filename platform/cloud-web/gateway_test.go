@@ -20,9 +20,9 @@ func TestGatewayWebhook(t *testing.T) {
 		"webhook_path": "/hook",
 	})
 
-	got := make(chan string, 1)
+	got := make(chan *core.Message, 1)
 	if err := p.Start(func(_ core.Platform, msg *core.Message) {
-		got <- msg.Content
+		got <- msg
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -40,6 +40,7 @@ func TestGatewayWebhook(t *testing.T) {
 	body, _ := json.Marshal(wireInboundMessage{
 		Type: "message", MsgID: "g1", SessionKey: "cloud_web:x:y",
 		UserID: "y", Content: "from gateway", ReplyCtx: "ctx",
+		Model: stringPtr("gpt-5.6-luna"), ReasoningEffort: stringPtr("xhigh"),
 	})
 	req, _ := http.NewRequest(http.MethodPost, url, strings.NewReader(string(body)))
 	req.Header.Set("Authorization", "Bearer secret")
@@ -53,14 +54,19 @@ func TestGatewayWebhook(t *testing.T) {
 	}
 
 	select {
-	case content := <-got:
-		if content != "from gateway" {
-			t.Fatalf("content = %q", content)
+	case msg := <-got:
+		if msg.Content != "from gateway" {
+			t.Fatalf("content = %q", msg.Content)
+		}
+		if msg.AgentTurnOptions == nil || msg.AgentTurnOptions.Model != "gpt-5.6-luna" || msg.AgentTurnOptions.ReasoningEffort != "xhigh" {
+			t.Fatalf("AgentTurnOptions = %#v", msg.AgentTurnOptions)
 		}
 	case <-time.After(3 * time.Second):
 		t.Fatal("timeout waiting for webhook message")
 	}
 }
+
+func stringPtr(value string) *string { return &value }
 
 func TestGatewayAuthenticate(t *testing.T) {
 	// Empty token must fail closed: reject every request.
